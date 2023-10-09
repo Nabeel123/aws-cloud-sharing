@@ -4,7 +4,7 @@
 # Login-Registration-Form
 Responsive Login &amp; Registration Form Using HTML &amp; CSS &amp; JS, File Sharing Simple Application Cloud Architecture 
 
-# config.js
+# The file config.js should be kept inside js folder.
 
 window._config = {
     cognito: {
