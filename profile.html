@@ -130,82 +130,108 @@ async function uploadFiles() {
 
 }
 
-// URL shorter code
-
-function shortenUrl(longUrl) {
+async function shortenUrl(longUrl) {
   const apiUrl = 'https://api-ssl.bitly.com/v4/shorten';
-  
+
   const requestData = {
-    long_url: longUrl
+    long_url: longUrl,
   };
-  
+
   const requestOptions = {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${_config.billy_short.urlShort}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
-    body: JSON.stringify(requestData)
+    body: JSON.stringify(requestData),
   };
 
-  fetch(apiUrl, requestOptions)
-    .then(response => response.json())
-    .then(data => {
-      const shortenedUrl = data.link;
-	  return shortenedUrl;
-    })
-    .catch(error => {
-      console.error('Error:', error);
-    });
+  try {
+    const response = await fetch(apiUrl, requestOptions);
+    const data = await response.json();
+    const shortenedUrl = data.link;
+    return shortenedUrl;
+  } catch (error) {
+    console.error('Error:', error);
+    return null;
+  }
 }
 
+// Copy link to clipboard
+
+function copyToClipboard(text) {
+  // Create a temporary input element
+  const input = document.createElement('input');
+  input.value = text;
+  input.name = 'clipping';
+  document.body.appendChild(input);
+
+  // Select and copy the text from the input field
+  input.select();
+  document.execCommand('copy');
+
+  // Remove the temporary input element
+  document.body.removeChild(input);
+}
+
+// List all keys and add sharing functionality
 
 async function listAllKeys() {
-	const fileList = document.getElementById('fileList');
-	// Clear existing list
-	fileList.innerHTML = '';
+  const fileList = document.getElementById('fileList');
+  // Clear existing list
+  fileList.innerHTML = '';
 
-	s3.listObjects(function (err, data) {
-            if (err) {
-              console.log(err, err.stack); // an error occurred
-            }  else  {
-				data.Contents.forEach((file, i) => {
+  s3.listObjects(function (err, data) {
+    if (err) {
+      console.log(err, err.stack); // an error occurred
+    } else {
+      data.Contents.forEach(async (file, i) => {
+        const listItem = document.createElement('tr');
+        const thead = document.createElement('th');
+        const fileName = document.createElement('td');
+        const lastModified = document.createElement('td');
+        const downloadLink = document.createElement('a');
+        const sharingLink = document.createElement('a');
 
-				const listItem = document.createElement('tr');
-				const thead = document.createElement('th');
-                const fileName = document.createElement('td');
-				const lastModified = document.createElement('td');
-                const downloadLink = document.createElement('button');
-				const sharingLink = document.createElement('button');
+        fileName.textContent = file.Key;
+        thead.textContent = i + 1;
+        lastModified.textContent = file.Size + ' bytes ';
+        downloadLink.href =
+          'https://ninja-media.s3.eu-north-1.amazonaws.com/' + file.Key;
+        downloadLink.download = file.name;
+        downloadLink.textContent = 'Download';
+        downloadLink.className = 'btn btn-outline-success my-2';
 
-                fileName.textContent = file.Key;
-				thead.textContent = i+1;
-				lastModified.textContent = file.Size + " bytes ";
-                downloadLink.href = "https://ninja-media.s3.eu-north-1.amazonaws.com/"+file.Key;
-                downloadLink.download = file.name;
-                downloadLink.textContent = 'Download';
-				downloadLink.className = 'btn btn-outline-success my-2';
+        sharingLink.textContent = 'Sharing';
+        sharingLink.className = 'btn btn-outline-primary mx-2';
+        sharingLink.setAttribute('id', 'sharing-id');
 
-				sharingLink.href= shortenUrl("https://ninja-media.s3.eu-north-1.amazonaws.com/"+file.Key);
-				sharingLink.textContent='Sharing';
-				sharingLink.className = 'btn btn-outline-primary mx-2';
+        const shortenedUrl = await shortenUrl(
+          'https://ninja-media.s3.eu-north-1.amazonaws.com/' + file.Key
+        );
 
-				listItem.appendChild(thead);
-                listItem.appendChild(fileName);
-				listItem.appendChild(lastModified);
-                listItem.appendChild(downloadLink);
-				listItem.appendChild(sharingLink);
+        sharingLink.addEventListener('click', function () {
+          if (shortenedUrl) {
+            copyToClipboard(shortenedUrl);
+            alert('Shortened URL copied to clipboard: ' + shortenedUrl);
+          } else {
+            alert('Failed to shorten URL.');
+          }
+        });
 
-                fileList.appendChild(listItem);
+        listItem.appendChild(thead);
+        listItem.appendChild(fileName);
+        listItem.appendChild(lastModified);
+        listItem.appendChild(downloadLink);
+        listItem.appendChild(sharingLink);
 
-				});
-
-			}
-          });
+        fileList.appendChild(listItem);
+      });
     }
+  });
+}
 
-
-	listAllKeys();
+listAllKeys();
 
     </script>
   </body>
